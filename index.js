@@ -9,16 +9,12 @@ if (!username) {
 
 const url = `https://api.github.com/users/${username}/events`;
 
-function makeRed(string) {
-  return chalk.red(string);
-}
-
-function makeCharsRed(string, chars) {
+function colorizeSelectedChars(string, charsToColorize, callback) {
   let newString = "";
 
   for (const char of string) {
-    if (chars.includes(char)) {
-      newString += makeRed(char);
+    if (charsToColorize.includes(char)) {
+      newString += callback(char);
       continue;
     }
 
@@ -26,6 +22,30 @@ function makeCharsRed(string, chars) {
   }
 
   return newString;
+}
+
+function colorizeSelectedStrings(string, stringsToColorize, callback) {
+  const stringArray = string.split(" ");
+
+  stringArray.forEach((word, index) => {
+    if (stringsToColorize.includes(word)) {
+      stringArray[index] = callback(word);
+    }
+  });
+
+  return stringArray.join(" ");
+}
+
+function makeNumbersToColor(string, callback) {
+  const stringArray = string.split(" ");
+
+  stringArray.forEach((word, index) => {
+    if (!isNaN(word)) {
+      stringArray[index] = callback(word);
+    }
+  });
+
+  return stringArray.join(" ");
 }
 
 try {
@@ -44,7 +64,7 @@ try {
       switch (event.type) {
         case "PushEvent":
           const commitCount = event.payload.commits.length;
-          action = `Pushed ${chalk.cyan(commitCount)} ${
+          action = `Pushed ${commitCount} ${
             commitCount === 1 ? "commit" : "commits"
           } to ${event.repo.name}`;
           break;
@@ -53,13 +73,11 @@ try {
           action = `${
             event.payload.action.charAt(0).toUpperCase() +
             event.payload.action.slice(1)
-          } a ${makeRed("new")} issue ${makeRed("in")} ${event.repo.name}`;
+          } a new issue in ${event.repo.name}`;
           break;
 
         case "CreateEvent":
-          action = `Created a ${makeRed("new")} ${
-            event.payload.ref_type
-          } ${makeRed("in")} ${event.repo.name}`;
+          action = `Created a new ${event.payload.ref_type} in ${event.repo.name}`;
           break;
 
         case "WatchEvent":
@@ -83,9 +101,12 @@ try {
           break;
       }
 
-      const formatedAction = makeCharsRed(action, ["/", "-"]);
+      action = colorizeSelectedChars(action, ["/", "-"], chalk.red);
+      action = colorizeSelectedStrings(action, ["new", "in", "on"], chalk.red);
+      action = colorizeSelectedStrings(action, ["to"], chalk.green);
+      action = makeNumbersToColor(action, chalk.cyan);
 
-      console.log("- ", formatedAction);
+      console.log("- ", action);
     })
   );
 } catch (error) {
